@@ -1,0 +1,68 @@
+Ai doc project-
+
+Small Note-
+so basically the ingest.py and retriver.py files in ingest file the file is uploaded ,the context is divided into chunks and given a embedded values then that embedded value will be stored in Chorma DB and in retriver the user asks the question and question embedded value will be matched with chunks embedded values that was stored in the chorma db.did i say correct
+
+Chunking-
+What is chunking?
+
+Chunking-Chunking in AI is the process of breaking down large pieces of text into smaller, manageable, and semantically meaningful segments called "chunks"
+
+Advantages-
+1.Accuracy-high
+2.cost-less
+3.Precision of sources-
+Without chunking, the LLM says "according to your document...". With chunking, you can point to the exact paragraph — "Source: annual_report.pdf, page 14". This is critical for trust and debugging hallucinations.
+
+Remember-
+
+Embeddings-
+1.An embedding is a mathematical technique that translates complex, real-world data—like words, images, or audio—into sequences of numbers called vectors. 
+
+An embedding model maps data points as coordinates in a high-dimensional space
+Semantic Proximity: Items that are alike or share similar contexts are placed close to each other in this space, while unrelated items are farther apart
+
+Measuring Distance: AI algorithms use mathematical formulas to calculate the distance between these vectors. This allows the computer to determine if two sentences, products, or images have the same underlying meaning
+
+Example-Platforms like Netflix or Spotify use embeddings to suggest movies or songs that "feel" similar to what you already like .
+
+
+ChromaDB-
+ChromaDB (often just called Chroma) is an open-source vector database designed specifically to store and search embeddings in AI applications.
+
+Traditional databases (like SQL) are built for strings and numbers. They struggle to store high-dimensional embedding vectors (which look like long lists of numbers, e.g., [0.12, -0.43, 0.91...]). ChromaDB fixes this by specializing in similarity searches
+
+Long-Term Memory for LLMs: Large Language Models like ChatGPT have no built-in memory of your personal data. ChromaDB acts as an external hard drive where an AI can store and look up information.
+
+Instead of matching words, you give ChromaDB a phrase, and it returns the closest matching text based on mathematical meaning .
+
+[Raw Text/Docs] ──> [Embedding Model] ──> [ChromaDB] ──> [Fast Semantic Search]. this is called ingestion pipeline.
+
+i feed my data then that data is break down into chunks and embeddings process will be used by ai and the embeddings value will be stored in the chroma DB so  when the question asks a question so the embeddings value that is closest to the chunk embeddings that chunk will be chosen. (correct explantion by gemini)
+ 
+
+Test Retrievall chunk-
+It means checking: did the vector search return the RIGHT chunks for a question?
+
+If retrieval gives the LLM the wrong chunks, even the smartest LLM will give a wrong answer.
+
+chunk_size=1000 is the sweet spot — big enough to have context, small enough to stay focused on one idea.
+
+What goes wrong?-(testing required for chunks) 
+1.Chunk size becomes large so solution so reduce the size to 1000 which is best for average .
+2.chunk size is small and there is no meaning and output will be vague sol-increase the chunk size.
+3.Answer is split into two chunks soln-overlap the chunks or chidl parent chunking method because child chunk is smaller(using ingestion pipeline on child chunk) and when their embedded value matches with chromaDB vector value we reached the parent chunk and feed it to the LLM .
+etc etc ....
+
+***what is pinecone?Difference between the Pinecone and ChromaDB?***
+
+ans)Pine cone is production level Vector DB while chromaDB is Local based vector DB. Pinecone use cloud infrasture and chromaDB uses system Disk.
+
+
+LLM generates answer-
+the ai takes the user question with chunk retrived by the ai agent !the ai+chunk is pasted into the prompt template which acts a guardtrail and is send to gemini!
+prompt template is created so our all the prompts stays at one place.Easy documentation.Ai wont hallucinate the answers
+
+Streamlit-(streamline chat interface)
+Streamlit is a free, open-source Python tool that lets you build a clean, web-based user interface (UI) for your AI apps in minutes—without needing to know HTML, CSS, or JavaScript.Can call api 
+  Provides a browser-based chat UI where users type questions and see answers with source citations.

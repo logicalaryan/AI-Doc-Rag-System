@@ -1,0 +1,16 @@
+{
+  "pythonVersion": "3.14",
+  "typeCheckingMode": "basic",
+  "reportMissingModuleSource": "none",
+  "reportMissingTypeStubs": "none",
+  "reportUnknownMemberType": "none",
+  "reportUnknownVariableType": "none",
+  "reportUnknownArgumentType": "none",
+  "reportAttributeAccessIssue": "none",
+  "venvPath": ".",
+  "exclude": [
+    "**/node_modules",
+    "**/__pycache__",
+    "vectorstore/**"
+  ]
+}

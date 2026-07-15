@@ -1,0 +1,15 @@
+.env
+vectorstore/
+__pycache__/
+*.pyc
+*.pyo
+data/*.pdf
+data/*.txt
+data/*.docx
+!data/.gitkeep
+.ipynb_checkpoints/
+*.egg-info/
+dist/
+build/
+.venv/
+venv/

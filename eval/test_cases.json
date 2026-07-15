@@ -1,0 +1,27 @@
+[
+  {
+    "question": "When was the company founded?",
+    "expected_chunk_contains": "founded in 2015",
+    "expected_answer_contains": "2015"
+  },
+  {
+    "question": "What is the annual revenue?",
+    "expected_chunk_contains": "500 crore",
+    "expected_answer_contains": "500 crore"
+  },
+  {
+    "question": "Where is the headquarters located?",
+    "expected_chunk_contains": "Bangalore",
+    "expected_answer_contains": "Bangalore"
+  },
+  {
+    "question": "What AI features are planned?",
+    "expected_chunk_contains": "AI-powered features",
+    "expected_answer_contains": "AI"
+  },
+  {
+    "question": "Who founded the company?",
+    "expected_chunk_contains": "Alice and Bob",
+    "expected_answer_contains": "Alice"
+  }
+]
