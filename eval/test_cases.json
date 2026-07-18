@@ -215,5 +215,40 @@
     "question": "How did the company perform financially in 2025?",
     "expected_chunk_contains": "500 crore",
     "expected_answer_contains": "500 crore"
+  },
+  {
+    "id": "TC-031",
+    "category": "typo",
+    "question": "Whwn was the compny founded?",
+    "expected_chunk_contains": "founded in 2015",
+    "expected_answer_contains": "2015"
+  },
+  {
+    "id": "TC-032",
+    "category": "typo",
+    "question": "Where is the headquaters locatd?",
+    "expected_chunk_contains": "Bangalore",
+    "expected_answer_contains": "Bangalore"
+  },
+  {
+    "id": "TC-033",
+    "category": "typo",
+    "question": "Whot are the foundrs?",
+    "expected_chunk_contains": "Alice and Bob",
+    "expected_answer_contains": "Alice"
+  },
+  {
+    "id": "TC-034",
+    "category": "out_of_scope",
+    "question": "What is the recipe for chocolate cake?",
+    "expected_chunk_contains": "cake",
+    "expected_answer_contains": "not"
+  },
+  {
+    "id": "TC-035",
+    "category": "out_of_scope",
+    "question": "Who won the World Cup in 2022?",
+    "expected_chunk_contains": "World Cup",
+    "expected_answer_contains": "not"
   }
 ]
