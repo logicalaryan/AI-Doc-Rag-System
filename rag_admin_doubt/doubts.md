@@ -15,8 +15,9 @@
 | 4 | [Precision@k](#4-precisionk) | How clean were ALL retrieved chunks? |
 | 5 | [Recall](#5-recall) | How many of ALL relevant chunks did we find? |
 | 6 | [MRR](#6-mrr-mean-reciprocal-rank) | How high up was the correct chunk ranked? |
-| 7 | [Latency](#7-latency) | How fast does the system respond? |
-| 8 | [Why Recall & Latency were skipped](#8-why-recall--latency-were-skipped-in-this-project) | Project-specific decision |
+| 7 | [F1 Score](#7-f1-score) | Balance between Precision and Recall |
+| 8 | [Latency](#8-latency) | How fast does the system respond? |
+| 9 | [Why Recall & Latency were skipped](#9-why-recall--latency-were-skipped-in-this-project) | Project-specific decision |
 
 ---
 
@@ -320,7 +321,91 @@ The `0.70` matches Hit Rate exactly — because every hit in this project was al
 
 ---
 
-## 7. Latency
+## 7. F1 Score
+
+<details>
+<summary><strong>Click to expand</strong></summary>
+
+### Definition
+F1 Score is the **harmonic mean of Precision and Recall**. It gives a single number that balances both — useful when you care equally about not missing relevant chunks (Recall) and not returning junk (Precision).
+
+### Formula
+```
+         2 × Precision × Recall
+F1  =  ─────────────────────────
+           Precision + Recall
+```
+
+> The **harmonic mean** punishes extreme imbalances. If either Precision or Recall is 0, F1 = 0 — even if the other is perfect.
+
+### Example
+
+| Scenario | Precision | Recall | F1 Score |
+|---|---|---|---|
+| Both perfect | 1.00 | 1.00 | **1.00** |
+| High P, Low R | 0.90 | 0.20 | **0.33** ← poor |
+| Low P, High R | 0.20 | 0.90 | **0.33** ← poor |
+| Balanced | 0.70 | 0.70 | **0.70** |
+| One is zero | 0.80 | 0.00 | **0.00** |
+
+### Why the harmonic mean and not a simple average?
+
+```
+Simple average of (0.90 + 0.10) / 2  = 0.50  ← looks okay
+Harmonic mean  of (0.90 + 0.10)      = 0.18  ← reveals the imbalance
+```
+
+A system that returns only 1 chunk (high precision, low recall) would fool a simple average. F1 catches it.
+
+### Precision vs Recall vs F1 — The Triangle
+
+```
+          You want ALL relevant chunks?  →  Optimize Recall
+          You want ONLY relevant chunks? →  Optimize Precision
+          You want BOTH balanced?        →  Optimize F1
+```
+
+### F1 in RAG context
+
+| What F1 measures in RAG | Why it matters |
+|---|---|
+| Retrieval F1 | Are we fetching enough relevant chunks without flooding the LLM with noise? |
+| Generation F1 (token-level) | Used in QA benchmarks like SQuAD — overlap between predicted and expected answer tokens |
+
+### Token-level F1 (used in QA benchmarks like SQuAD)
+
+This variant compares individual **words/tokens** between the predicted answer and the ground truth:
+
+```
+Ground truth: "The company was founded in 2015"
+Predicted:    "It was founded in 2015 by Alice"
+
+Common tokens: [was, founded, in, 2015]  → 4 tokens
+
+Precision = 4 / 7  = 0.57   (4 of 7 predicted tokens are correct)
+Recall    = 4 / 6  = 0.67   (4 of 6 ground truth tokens were found)
+F1        = 2×0.57×0.67 / (0.57+0.67) = 0.62
+```
+
+### Why F1 is NOT implemented in this project
+- **Retrieval F1** needs full Recall annotation (same problem as Recall — see Section 9)
+- **Token-level F1** needs exact ground truth answer strings, not just keywords
+- Our test cases only store one `expected_answer_contains` keyword — not a full answer string
+- For a portfolio demo, Hit Rate + MRR + Precision@k already cover the retrieval story well
+
+**In production:** Use SQuAD-style F1 via HuggingFace `evaluate` library:
+```python
+import evaluate
+squad_metric = evaluate.load("squad")
+result = squad_metric.compute(predictions=[...], references=[...])
+print(result["f1"])  # token-level F1
+```
+
+</details>
+
+---
+
+## 8. Latency
 
 <details>
 <summary><strong>Click to expand</strong></summary>
@@ -381,7 +466,7 @@ Example production targets:
 
 ---
 
-## 8. Why Recall & Latency Were Skipped in This Project
+## 9. Why Recall & Latency Were Skipped in This Project
 
 <details>
 <summary><strong>Click to expand</strong></summary>
