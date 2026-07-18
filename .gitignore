@@ -13,3 +13,6 @@ dist/
 build/
 .venv/
 venv/
+
+# Local notes — do not push
+recent changes/
