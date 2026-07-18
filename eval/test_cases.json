@@ -1,27 +1,219 @@
 [
   {
+    "id": "TC-001",
+    "category": "factual",
     "question": "When was the company founded?",
     "expected_chunk_contains": "founded in 2015",
     "expected_answer_contains": "2015"
   },
   {
+    "id": "TC-002",
+    "category": "factual",
     "question": "What is the annual revenue?",
     "expected_chunk_contains": "500 crore",
     "expected_answer_contains": "500 crore"
   },
   {
+    "id": "TC-003",
+    "category": "factual",
     "question": "Where is the headquarters located?",
     "expected_chunk_contains": "Bangalore",
     "expected_answer_contains": "Bangalore"
   },
   {
+    "id": "TC-004",
+    "category": "factual",
     "question": "What AI features are planned?",
     "expected_chunk_contains": "AI-powered features",
     "expected_answer_contains": "AI"
   },
   {
+    "id": "TC-005",
+    "category": "factual",
     "question": "Who founded the company?",
     "expected_chunk_contains": "Alice and Bob",
     "expected_answer_contains": "Alice"
+  },
+
+  {
+    "id": "TC-006",
+    "category": "reformulation",
+    "question": "What year did the company start operations?",
+    "expected_chunk_contains": "founded in 2015",
+    "expected_answer_contains": "2015"
+  },
+  {
+    "id": "TC-007",
+    "category": "reformulation",
+    "question": "Tell me the co-founders of the company.",
+    "expected_chunk_contains": "Alice and Bob",
+    "expected_answer_contains": "Bob"
+  },
+  {
+    "id": "TC-008",
+    "category": "reformulation",
+    "question": "What is the office location of this company?",
+    "expected_chunk_contains": "Bangalore",
+    "expected_answer_contains": "Bangalore"
+  },
+  {
+    "id": "TC-009",
+    "category": "reformulation",
+    "question": "How much money does the company make per year?",
+    "expected_chunk_contains": "500 crore",
+    "expected_answer_contains": "500 crore"
+  },
+  {
+    "id": "TC-010",
+    "category": "reformulation",
+    "question": "What new technology features are on the roadmap?",
+    "expected_chunk_contains": "AI-powered features",
+    "expected_answer_contains": "AI"
+  },
+
+  {
+    "id": "TC-011",
+    "category": "synonym_mismatch",
+    "question": "What is the establishment year of the firm?",
+    "expected_chunk_contains": "founded in 2015",
+    "expected_answer_contains": "2015"
+  },
+  {
+    "id": "TC-012",
+    "category": "synonym_mismatch",
+    "question": "What is the turnover of the enterprise?",
+    "expected_chunk_contains": "500 crore",
+    "expected_answer_contains": "500 crore"
+  },
+  {
+    "id": "TC-013",
+    "category": "synonym_mismatch",
+    "question": "Which city does the organization operate from?",
+    "expected_chunk_contains": "Bangalore",
+    "expected_answer_contains": "Bangalore"
+  },
+  {
+    "id": "TC-014",
+    "category": "synonym_mismatch",
+    "question": "Who are the people who started this business?",
+    "expected_chunk_contains": "Alice and Bob",
+    "expected_answer_contains": "Alice"
+  },
+  {
+    "id": "TC-015",
+    "category": "synonym_mismatch",
+    "question": "What machine learning capabilities are being developed?",
+    "expected_chunk_contains": "AI-powered features",
+    "expected_answer_contains": "AI"
+  },
+
+  {
+    "id": "TC-016",
+    "category": "multi_fact",
+    "question": "When was the company founded and who founded it?",
+    "expected_chunk_contains": "Alice and Bob",
+    "expected_answer_contains": "2015"
+  },
+  {
+    "id": "TC-017",
+    "category": "multi_fact",
+    "question": "Where is the company based and what is its revenue?",
+    "expected_chunk_contains": "Bangalore",
+    "expected_answer_contains": "500 crore"
+  },
+  {
+    "id": "TC-018",
+    "category": "multi_fact",
+    "question": "Who are the founders and what future plans does the company have?",
+    "expected_chunk_contains": "Alice and Bob",
+    "expected_answer_contains": "AI"
+  },
+
+  {
+    "id": "TC-019",
+    "category": "specificity",
+    "question": "In which quarter did the company hit 500 crore in revenue?",
+    "expected_chunk_contains": "Q3 2025",
+    "expected_answer_contains": "Q3"
+  },
+  {
+    "id": "TC-020",
+    "category": "specificity",
+    "question": "What is the country where the company headquarters is located?",
+    "expected_chunk_contains": "India",
+    "expected_answer_contains": "India"
+  },
+  {
+    "id": "TC-021",
+    "category": "specificity",
+    "question": "In what year are the AI-powered features planned for launch?",
+    "expected_chunk_contains": "2026",
+    "expected_answer_contains": "2026"
+  },
+
+  {
+    "id": "TC-022",
+    "category": "vague",
+    "question": "Tell me about the company.",
+    "expected_chunk_contains": "founded in 2015",
+    "expected_answer_contains": "2015"
+  },
+  {
+    "id": "TC-023",
+    "category": "vague",
+    "question": "What do you know about the product?",
+    "expected_chunk_contains": "AI-powered features",
+    "expected_answer_contains": "AI"
+  },
+  {
+    "id": "TC-024",
+    "category": "vague",
+    "question": "Give me some financial information.",
+    "expected_chunk_contains": "500 crore",
+    "expected_answer_contains": "500 crore"
+  },
+  {
+    "id": "TC-025",
+    "category": "vague",
+    "question": "Who are the important people here?",
+    "expected_chunk_contains": "Alice and Bob",
+    "expected_answer_contains": "Alice"
+  },
+
+  {
+    "id": "TC-026",
+    "category": "negative",
+    "question": "What is the company's stock ticker symbol?",
+    "expected_chunk_contains": "ticker",
+    "expected_answer_contains": "not"
+  },
+  {
+    "id": "TC-027",
+    "category": "negative",
+    "question": "How many employees does the company have?",
+    "expected_chunk_contains": "employees",
+    "expected_answer_contains": "not"
+  },
+  {
+    "id": "TC-028",
+    "category": "negative",
+    "question": "What is the CEO's salary?",
+    "expected_chunk_contains": "salary",
+    "expected_answer_contains": "not"
+  },
+
+  {
+    "id": "TC-029",
+    "category": "context_sensitivity",
+    "question": "What did Alice and Bob build?",
+    "expected_chunk_contains": "Alice and Bob",
+    "expected_answer_contains": "company"
+  },
+  {
+    "id": "TC-030",
+    "category": "context_sensitivity",
+    "question": "How did the company perform financially in 2025?",
+    "expected_chunk_contains": "500 crore",
+    "expected_answer_contains": "500 crore"
   }
 ]
