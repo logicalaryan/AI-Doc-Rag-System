@@ -13,7 +13,10 @@ from pathlib import Path
 from typing import List
 
 from dotenv import load_dotenv
-from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_text_splitters import (
+    RecursiveCharacterTextSplitter,
+    CharacterTextSplitter,
+)
 from langchain_community.document_loaders import (
     PyPDFLoader,
     TextLoader,
@@ -79,22 +82,33 @@ def chunk_documents(
     documents: List[Document],
     chunk_size: int = CHUNK_SIZE,
     chunk_overlap: int = CHUNK_OVERLAP,
+    strategy: str = "recursive",
 ) -> List[Document]:
     """
-    Split documents into overlapping chunks using RecursiveCharacterTextSplitter.
-
-    The recursive splitter tries to split on paragraphs, then sentences,
-    then words — preserving semantic boundaries wherever possible.
+    Split documents into overlapping chunks.
+    Supported strategies:
+    - 'recursive' (default): Tries to split on paragraphs, sentences, then words.
+    - 'character': Splits exactly on a single separator (e.g., paragraphs) or fixed size.
     """
-    splitter = RecursiveCharacterTextSplitter(
-        chunk_size=chunk_size,
-        chunk_overlap=chunk_overlap,
-        length_function=len,
-        separators=["\n\n", "\n", ". ", " ", ""],
-    )
+    if strategy == "character":
+        splitter = CharacterTextSplitter(
+            separator="\n\n",
+            chunk_size=chunk_size,
+            chunk_overlap=chunk_overlap,
+            length_function=len,
+        )
+    else:
+        # Default to recursive
+        splitter = RecursiveCharacterTextSplitter(
+            chunk_size=chunk_size,
+            chunk_overlap=chunk_overlap,
+            length_function=len,
+            separators=["\n\n", "\n", ". ", " ", ""],
+        )
+        
     chunks = splitter.split_documents(documents)
     print(f"[ingest] Split into {len(chunks)} chunk(s) "
-          f"(size={chunk_size}, overlap={chunk_overlap})")
+          f"(size={chunk_size}, overlap={chunk_overlap}, strategy={strategy})")
     return chunks
 
 
@@ -137,6 +151,7 @@ def ingest(
     chunk_size: int = CHUNK_SIZE,
     chunk_overlap: int = CHUNK_OVERLAP,
     persist_dir: str = CHROMA_PERSIST_DIR,
+    strategy: str = "recursive",
 ) -> Chroma:
     """
     Full ingestion pipeline: load → chunk → embed → persist.
@@ -148,6 +163,6 @@ def ingest(
         print("[ingest] No documents found. Add files to the data/ directory.")
         return None
 
-    chunks = chunk_documents(documents, chunk_size, chunk_overlap)
+    chunks = chunk_documents(documents, chunk_size, chunk_overlap, strategy=strategy)
     vectorstore = build_vectorstore(chunks, persist_dir)
     return vectorstore

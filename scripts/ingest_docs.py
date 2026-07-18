@@ -41,11 +41,19 @@ def main():
         default="./vectorstore",
         help="Directory to store the ChromaDB index (default: ./vectorstore)",
     )
+    parser.add_argument(
+        "--strategy",
+        type=str,
+        default="recursive",
+        choices=["recursive", "character"],
+        help="Chunking strategy to use: 'recursive' or 'character' (default: recursive)",
+    )
     args = parser.parse_args()
 
     print(f"Ingesting documents from: {args.data_dir}")
     print(f"  Chunk size:    {args.chunk_size}")
     print(f"  Chunk overlap: {args.chunk_overlap}")
+    print(f"  Strategy:      {args.strategy}")
     print(f"  Persist dir:   {args.persist_dir}")
     print()
 
@@ -54,6 +62,7 @@ def main():
         chunk_size=args.chunk_size,
         chunk_overlap=args.chunk_overlap,
         persist_dir=args.persist_dir,
+        strategy=args.strategy,
     )
 
     if result is not None:

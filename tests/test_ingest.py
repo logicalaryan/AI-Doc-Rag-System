@@ -132,3 +132,12 @@ class TestChunkDocuments:
         chunks = chunk_documents(docs, chunk_size=300, chunk_overlap=50)
         for chunk in chunks:
             assert "source" in chunk.metadata
+
+    def test_character_strategy_splits_on_double_newline(self, tmp_path):
+        text = "Paragraph 1\n\nParagraph 2\n\nParagraph 3"
+        docs = self._make_docs(tmp_path, text=text)
+        chunks = chunk_documents(docs, chunk_size=50, chunk_overlap=0, strategy="character")
+        assert len(chunks) == 3
+        assert "Paragraph 1" in chunks[0].page_content
+        assert "Paragraph 2" in chunks[1].page_content
+        assert "Paragraph 3" in chunks[2].page_content
