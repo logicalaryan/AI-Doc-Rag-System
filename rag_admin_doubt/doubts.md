@@ -16,8 +16,10 @@
 | 5 | [Recall](#5-recall) | How many of ALL relevant chunks did we find? |
 | 6 | [MRR](#6-mrr-mean-reciprocal-rank) | How high up was the correct chunk ranked? |
 | 7 | [F1 Score](#7-f1-score) | Balance between Precision and Recall |
-| 8 | [Latency](#8-latency) | How fast does the system respond? |
-| 9 | [Why Recall & Latency were skipped](#9-why-recall--latency-were-skipped-in-this-project) | Project-specific decision |
+| 8 | [Faithfulness](#8-faithfulness) | Did the LLM answer stay grounded in the context? |
+| 9 | [Answer Relevancy](#9-answer-relevancy) | Did the LLM answer actually address the question? |
+| 10 | [Latency](#10-latency) | How fast does the system respond? |
+| 11 | [Why Recall & Latency were skipped](#11-why-recall--latency-were-skipped-in-this-project) | Project-specific decision |
 
 ---
 
@@ -535,21 +537,308 @@ Track as P50/P95 using OpenTelemetry or Prometheus.
 
 ---
 
+## 8. Faithfulness
+
+<details>
+<summary><strong>Click to expand</strong></summary>
+
+### Definition
+Faithfulness measures: **does the generated answer contain only information that is present in the retrieved context?**
+
+It is the primary metric for detecting **hallucinations** — cases where the LLM invents facts not grounded in the source documents.
+
+### Formula (conceptual)
+```
+Faithfulness = Statements in answer that are supported by context
+               ──────────────────────────────────────────────────
+                       Total statements in answer
+```
+
+### How it works in this project
+
+This project uses a **keyword-based** faithfulness check (no LLM judge needed):
+
+```python
+# eval/eval_generation.py
+def is_faithful(answer: str, expected_contains: str) -> bool:
+    return expected_contains.lower() in answer.lower()
+```
+
+**Logic:** If the expected keyword is in the answer → the answer is grounded → Faithful ✅  
+**If missing** → the LLM either hallucinated or phrased it differently → Not Faithful ❌
+
+### Example
+
+| Question | Expected keyword | LLM Answer | Faithful? |
+|---|---|---|---|
+| When was the company founded? | `"2015"` | "The company was founded in 2015." | ✅ Yes |
+| When was the company founded? | `"2015"` | "The company was established recently." | ❌ No |
+| When was the company founded? | `"2015"` | "I don't know, maybe 2015 or 2016." | ✅ Yes (keyword found, but answer is bad!) |
+
+> ⚠️ The last row shows the limit of keyword-based checking — it passes even when the answer is uncertain. RAGAS uses an LLM judge to avoid this.
+
+### This project's actual result
+```
+Faithfulness = evaluated per-question when eval_generation.py is run
+               (requires GOOGLE_API_KEY — calls real Gemini LLM)
+```
+
+### Production approach (RAGAS)
+RAGAS sends each answer + context to an LLM judge that checks:
+- Is every claim in the answer supported by at least one retrieved chunk?
+- Score: 0.0 (fully hallucinated) → 1.0 (fully grounded)
+
+### Why Faithfulness matters more than Accuracy in RAG
+```
+Accuracy  = Is the answer correct?        (needs human-labeled ground truth)
+Faithfulness = Is the answer grounded?    (only needs retrieved context — automated!)
+```
+You can measure faithfulness without knowing the "right" answer — making it practical.
+
+</details>
+
+---
+
+## 9. Answer Relevancy
+
+<details>
+<summary><strong>Click to expand</strong></summary>
+
+### Definition
+Answer Relevancy measures: **does the generated answer actually address the question that was asked?**
+
+An answer can be **faithful** (grounded in the document) but still **irrelevant** (doesn't answer the question). This metric catches that.
+
+### Example of the gap
+```
+Question: "Where is the headquarters?"
+Context:  "The company is in Bangalore. Revenue is 500 crore."
+Answer:   "The annual revenue is 500 crore."  ← Faithful ✅ but Irrelevant ❌
+```
+
+### How it works in this project
+
+This project uses a **word-overlap** relevancy check:
+
+```python
+# eval/eval_generation.py
+def is_relevant(answer: str, question: str) -> bool:
+    STOP_WORDS = {"what", "when", "where", "who", "how", "is", "the", ...}
+    question_words = [
+        w.lower().strip("?.,") for w in question.split()
+        if w.lower().strip("?.,") not in STOP_WORDS and len(w) > 2
+    ]
+    return any(word in answer.lower() for word in question_words)
+```
+
+**Logic:** Strip stop words from question → check if any meaningful word appears in the answer.
+
+### Example walkthrough
+
+```
+Question: "Where is the headquarters located?"
+
+After stripping stop words: ["headquarters", "located"]
+
+Answer A: "The headquarters is in Bangalore."
+  → "headquarters" found in answer → Relevant ✅
+
+Answer B: "The revenue is 500 crore."
+  → Neither "headquarters" nor "located" found → Not Relevant ❌
+```
+
+### Faithfulness vs Answer Relevancy
+
+| | Faithful ✅ | Not Faithful ❌ |
+|---|---|---|
+| **Relevant ✅** | Perfect answer | Made-up but on-topic |
+| **Not Relevant ❌** | Grounded but off-topic | Worst case — hallucinated AND irrelevant |
+
+You want answers that are **both** faithful AND relevant.
+
+### This project's actual result
+```
+Answer Relevancy = evaluated per-question when eval_generation.py is run
+                  (requires GOOGLE_API_KEY — calls real Gemini LLM)
+```
+
+### Production approach (RAGAS)
+RAGAS generates reverse questions from the answer using an LLM, then measures the **embedding similarity** between the generated reverse question and the original question:
+- High similarity → answer is relevant
+- Low similarity → answer drifted off-topic
+
+### Why both metrics are needed together
+```
+Faithfulness alone  → catches hallucination, misses off-topic answers
+Relevancy alone     → catches off-topic, misses hallucination
+Both together       → full picture of answer quality
+```
+
+</details>
+
+---
+
+## 10. Latency
+
+<details>
+<summary><strong>Click to expand</strong></summary>
+
+### Definition
+Latency is the **time taken** for the system to process a question and return an answer — measured in milliseconds (ms) or seconds (s).
+
+### Components in a RAG system
+
+```
+Total Latency = Embedding time + Retrieval time + LLM time
+
+┌──────────────────────────────────────────────────────┐
+│  User sends question                                 │
+│         │                                            │
+│  ┌──────▼──────┐                                     │
+│  │  Embed Q    │  ~10–50 ms   (HuggingFace, local)   │
+│  └──────┬──────┘                                     │
+│         │                                            │
+│  ┌──────▼──────┐                                     │
+│  │ ChromaDB    │  ~10–50 ms   (local disk search)    │
+│  │  search     │                                     │
+│  └──────┬──────┘                                     │
+│         │                                            │
+│  ┌──────▼──────┐                                     │
+│  │ Gemini API  │  ~1000–3000 ms  ← BIGGEST factor    │
+│  │  (LLM call) │  (network + model inference)        │
+│  └──────┬──────┘                                     │
+│         │                                            │
+│  Answer returned                                     │
+└──────────────────────────────────────────────────────┘
+```
+
+### Common latency metrics in production
+
+| Metric | Meaning |
+|---|---|
+| **P50** | 50% of requests are faster than this (median) |
+| **P95** | 95% of requests are faster than this |
+| **P99** | 99% of requests are faster than this (worst cases) |
+
+```
+Example production targets:
+  P50 < 1.5 sec
+  P95 < 3.0 sec
+  P99 < 5.0 sec
+```
+
+### Why Latency matters
+- **Too slow** → users leave / bad UX
+- **Streaming** → our `stream()` function solves perceived latency by showing tokens as they arrive
+- **Retrieval latency** is negligible here (~20ms); the bottleneck is always the LLM API
+
+### Why Latency was NOT measured here
+> See [Section 11](#11-why-recall--latency-were-skipped-in-this-project)
+
+### How to add it
+```python
+import time
+
+start = time.perf_counter()
+result = ask(question, vectorstore=vs)
+latency_ms = (time.perf_counter() - start) * 1000
+
+print(f"Latency: {latency_ms:.0f} ms")
+```
+Track as P50/P95 using OpenTelemetry or Prometheus.
+
+</details>
+
+---
+
+## 11. Why Recall & Latency Were Skipped in This Project
+
+<details>
+<summary><strong>Click to expand</strong></summary>
+
+### Why Recall was skipped
+
+**Recall requires knowing ALL relevant chunks** in the database for every question.
+
+```
+test_cases.json stores:
+  "expected_chunk_contains": "founded in 2015"   ← only ONE phrase
+
+Recall needs:
+  "relevant_chunk_ids": [3, 7, 12, 19]           ← ALL relevant chunks
+```
+
+Building that full annotation requires:
+1. Manually reviewing every chunk in the vectorstore
+2. Labelling which ones are relevant per question
+3. Updating labels every time new documents are ingested
+
+This is expensive human effort — not justified for a demo with a 4-line document.
+
+**In production:** Use tools like [LlamaIndex evaluation](https://docs.llamaindex.ai/en/stable/module_guides/evaluating/) or [RAGAS](https://docs.ragas.io/) with pre-labelled benchmark datasets.
+
+---
+
+### Why Latency was skipped
+
+**1. It's environment-dependent**
+```
+Same code, different results:
+  Local CPU laptop       →  3.2 seconds
+  Cloud GPU server       →  0.4 seconds
+  Slow network / India   →  5+ seconds (Gemini API round-trip)
+```
+A number from one machine means nothing to someone else.
+
+**2. The bottleneck is Gemini's servers, not our code**
+```
+ChromaDB search   =  ~20 ms    (our code)
+HuggingFace embed =  ~40 ms    (our code)
+Gemini API call   =  ~2000 ms  (Google's infrastructure)
+```
+Measuring total latency mostly measures Google's API performance.
+
+**3. No SLA defined**
+Latency only becomes a metric when you have a target to compare against (e.g., *"must respond in < 2 seconds"*). This portfolio project has no such requirement.
+
+**4. Streaming mitigates perceived latency**
+The `stream()` function in `app/chain.py` streams tokens as they arrive — so users see output immediately even if full generation takes 3 seconds.
+
+**How to add it in production:**
+```python
+import time
+
+start = time.perf_counter()
+result = ask(question, vectorstore=vs)
+latency_ms = (time.perf_counter() - start) * 1000
+
+print(f"Latency: {latency_ms:.0f} ms")
+```
+Track as P50/P95 using OpenTelemetry or Prometheus.
+
+</details>
+
+---
+
 ## Quick Reference Card
 
 ```
-┌─────────────────┬──────────────────────────────┬────────────────┐
-│ Metric          │ Question Answered             │ Project Score  │
-├─────────────────┼──────────────────────────────┼────────────────┤
-│ k               │ How many chunks to fetch?     │ k = 3          │
-│ Hit Rate / Hit@k│ Found it at all? (yes/no)     │ 0.70           │
-│ Precision@k     │ How clean were ALL results?   │ 0.70           │
-│ MRR             │ How high up was the hit?      │ 0.70           │
-│ Recall          │ Found ALL relevant chunks?    │ Not measured*  │
-│ Latency         │ How fast?                     │ Not measured*  │
-└─────────────────┴──────────────────────────────┴────────────────┘
+┌──────────────────────┬─────────────────────────────────────┬────────────────┐
+│ Metric               │ Question Answered                    │ Project Score  │
+├──────────────────────┼─────────────────────────────────────┼────────────────┤
+│ k                    │ How many chunks to fetch?            │ k = 3          │
+│ Hit Rate / Hit@k     │ Found it at all? (yes/no)            │ 0.70           │
+│ Precision@k          │ How clean were ALL results?          │ 0.70           │
+│ MRR                  │ How high up was the hit?             │ 0.70           │
+│ F1 Score             │ Balance of Precision + Recall        │ Not measured*  │
+│ Faithfulness         │ Did LLM stay grounded in context?    │ Run eval_gen** │
+│ Answer Relevancy     │ Did LLM answer the actual question?  │ Run eval_gen** │
+│ Recall               │ Found ALL relevant chunks?           │ Not measured*  │
+│ Latency              │ How fast?                            │ Not measured*  │
+└──────────────────────┴─────────────────────────────────────┴────────────────┘
 
-* See Section 8 for reasons why.
+*  See Section 11 for reasons why.
+** Run: python eval/eval_generation.py  (requires GOOGLE_API_KEY)
 ```
 
 ---
