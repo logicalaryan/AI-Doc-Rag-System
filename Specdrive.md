@@ -15,6 +15,18 @@
 > **Free tier limits for Gemini:** 15 requests/minute, 1 million tokens/minute, 1,500 requests/day.
 > This is more than enough for development and portfolio demos.
 
+### 🧠 Embedding Model Details (`all-MiniLM-L6-v2`)
+
+*   **Why we use it:**
+    *   **100% Free & Local:** Runs on CPU without needing API keys or incurring token costs.
+    *   **Fast & Efficient:** Produces 384-dimensional vectors, which are quick to generate and search.
+*   **Language Support (English Only):**
+    *   It is trained exclusively on English data.
+    *   The tokenizer is optimized for English, meaning it will perform poorly on other languages.
+*   **Multilingual Alternatives (if needed later):**
+    *   **Lightweight (CPU-friendly):** Swap to `paraphrase-multilingual-MiniLM-L12-v2` or `intfloat/multilingual-e5-small`. These are small enough to run fast on a standard CPU.
+    *   **State-of-the-Art (Heavier):** Use `BAAI/bge-m3` (supports 100+ languages) or `intfloat/multilingual-e5-large`. *Note: These are much larger models (1GB+) and will be noticeably slower on a CPU without a dedicated GPU.*
+
 ---
 
 ## Folder Layout
