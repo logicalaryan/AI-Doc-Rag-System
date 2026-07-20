@@ -1,4 +1,5 @@
-Ai doc project-
+Ai doc project(RAG)-Raw Text/Docs ──> chunking->Embedding  ──> ChromaDB ──> vector search -> match the vector value with values in chroma DB. this is called ingestion pipeline.
+
 
 Small Note-
 so basically the ingest.py and retriver.py files in ingest file the file is uploaded ,the context is divided into chunks and given a embedded values then that embedded value will be stored in Chorma DB and in retriver the user asks the question and question embedded value will be matched with chunks embedded values that was stored in the chorma db.did i say correct
@@ -17,7 +18,7 @@ Without chunking, the LLM says "according to your document...". With chunking, y
 Remember-
 
 Embeddings-
-1.An embedding is a mathematical technique that translates complex, real-world data—like words, images, or audio—into sequences of numbers called vectors. 
+1.An embedding is a mathematical technique that translates complex, real-world data—like words, images, or audio—into sequences of numbers called vectors.
 
 An embedding model maps data points as coordinates in a high-dimensional space
 Semantic Proximity: Items that are alike or share similar contexts are placed close to each other in this space, while unrelated items are farther apart
@@ -36,7 +37,6 @@ Long-Term Memory for LLMs: Large Language Models like ChatGPT have no built-in m
 
 Instead of matching words, you give ChromaDB a phrase, and it returns the closest matching text based on mathematical meaning .
 
-[Raw Text/Docs] ──> [Embedding Model] ──> [ChromaDB] ──> [Fast Semantic Search]. this is called ingestion pipeline.
 
 i feed my data then that data is break down into chunks and embeddings process will be used by ai and the embeddings value will be stored in the chroma DB so  when the question asks a question so the embeddings value that is closest to the chunk embeddings that chunk will be chosen. (correct explantion by gemini)
  
@@ -48,7 +48,7 @@ If retrieval gives the LLM the wrong chunks, even the smartest LLM will give a w
 
 chunk_size=1000 is the sweet spot — big enough to have context, small enough to stay focused on one idea.
 
-What goes wrong?-(testing required for chunks) 
+What goes wrong?-(testing required for chunks)
 1.Chunk size becomes large so solution so reduce the size to 1000 which is best for average .
 2.chunk size is small and there is no meaning and output will be vague sol-increase the chunk size.
 3.Answer is split into two chunks soln-overlap the chunks or chidl parent chunking method because child chunk is smaller(using ingestion pipeline on child chunk) and when their embedded value matches with chromaDB vector value we reached the parent chunk and feed it to the LLM .
@@ -64,5 +64,185 @@ the ai takes the user question with chunk retrived by the ai agent !the ai+chunk
 prompt template is created so our all the prompts stays at one place.Easy documentation.Ai wont hallucinate the answers
 
 Streamlit-(streamline chat interface)
-Streamlit is a free, open-source Python tool that lets you build a clean, web-based user interface (UI) for your AI apps in minutes—without needing to know HTML, CSS, or JavaScript.Can call api 
+Streamlit is a free, open-source Python tool that lets you build a clean, web-based user interface (UI) for your AI apps in minutes—without needing to know HTML, CSS, or JavaScript.Can call api
   Provides a browser-based chat UI where users type questions and see answers with source citations.
+
+
+How we are going to load the files into the system by-
+1.pyPdf
+2.UnstructuredHTMLloader
+3.CSVLoader
+
+
+Split the paragraph-.text_split,.document_split(),separator =para,.,sentence,characters,words.
+
+1.ChacterTextSplitter--abc.split_text(paragraph_name)
+
+2.RecursiveCharacterTextSpiltter-A Recursive Text Splitter is a technique used in LLM applications (such as RAG systems) to break a large document into smaller chunks while trying to keep related information together.It is called recursive because it doesn't immediately cut the text into fixed-size pieces. Instead, it tries different separators in a specific order until the chunk becomes small enough.
+
+it keeps semantically related text together. It will always try to keep whole paragraphs and sentences intact within your target chunk size.This is the recommended default for most RAG applications.
+
+eg- without RecursiveTextSplitter-
+ I  have a dog named pomyy and he is friendly with everyone.There exits 52 characters and the chunk size is 40
+Chunk 1:I have a dog named pomyy and he is frie
+chunk 2: ndly with everyone.he is ->see  words are trimmed becuase fixed spillter cuts the words at 40.
+
+conclusion-Quality of embeddings is reduced
+
+with RecursiveTextSplitter -
+Chunk 1:I have a dog named Pomyy and he is
+Chunk 2:friendly with everyone.
+
+How RAG CONNECTS?
+rag connects chunks and the user ques in prompt template using lecl pipeline
+There is a component called runnablepassthrough which make sure that the prompt and user ques goes into LLM unchanged.
+LCEL-Langchain expression language
+
+Types of Rag-
+1.Dense Rag
+
+2.Sparse Rag-
+methods used in sparse RAG-
+BM-25(updated version of TF-IDF) ,TF-IDF(low TF
+
+3.Hybrid Rag
+ 
+How to fix sleep schedule?
+sparse rag will break this into ['fix','sleep','schedule']
+ 
+a article says steps for good lifestyle
+ 
+ so here the sparse rag will ignore  this doc as fix,sleep,schedule words dont exists in the document ! and will give a irrelevant doc that contains the words like
+ 
+ fix, sleep schedule,sparse rag looks for the exact keywords !
+ 
+dense rag wont ignore as the  schedule is similar as  the lifestyle
+
+
+A/B testing-
+Prompt template are the place where all the prompts are stored !. Place where all the instructions will be reviewed that will be sent to the LLM .Then we do A/B testing of each prompt.
+eg - suppose the designer want the green color and marketing person wants the red color  both fights and in the end they decided to go with Hippo(Highest paid person opinion).now if we used A/B testing then then  in this we will show 50 percent of  green button to users and other 50 percent of blue button to real button . From the button clicks , lets just assume that  green button got 15 percent more clicks than the blue button so we can say that  A/B testing works by the data driven decisions .
+
+Fast API-
+fast api is used here - why it is used to act as a bridge between the ui and the brain i.e Rag , suppose the StreamLit needs to be swap with the react app or the curl we can do it ,  without changing the rag  example - there is a kitchen and a dinning hall both are kept separate and suppose i wanted to renovate the dining room without rennovating the kitchen i can do it .
+Fastapi automatically creates  a web page where we can  test the api endpoints .
+Streamlit forces you  a spscific layout and in react you have the 100 percent controlability.
+Streamlit re-runs the entire script from top to bottom making the ui slower
+
+
+Corpus-
+What is an AI corpus in the context of Machine Learning?
+ans)When a large structured collection of data such as texts , images ,or audio used to train ai models.Types-images , audio , text corpus .It is important to  pre process the corpus before i feed it into the machine (Preprocessing ensure quality  of  data is very high )
+if we dont give pre processed data before we feed it to the
+
+Tests-
+I will check whether the text files or pdf that are loaded are correct or not , chunks stays within the chunk limit.
+I will check whether the retriever retrives the expected  chunk from small test corpus
+
+Edge cases-
+pdf contains tables and i ask for info
+if the file is password protectedt eh m what .
+context window chuck issue
+
+Hit Rate-
+hit@5=1 or 0 no any other value.
+answer is within the top 5 retrived document .
+Documents
+      ↓
+Create embeddings
+      ↓
+Store in Vector Database
+      ↓
+User asks a question
+      ↓
+Question converted into embedding
+      ↓
+Compare question embedding with all document embeddings
+      ↓
+Calculate similarity scores
+      ↓
+Rank documents
+      ↓
+I set k = 5
+      ↓
+Retriever returns Top 5 documents
+      ↓
+LLM reads those 5 documents
+      ↓
+LLM generates the final answer
+
+who decides the value of k?
+   When a user asks a question, the question is converted into an embedding. The retriever compares this embedding with all the document embeddings stored in the vector database and ranks the documents based on similarity. I configure the value of k, for example k = 5, so the retriever returns the top 5 most relevant documents. These documents are then passed to the LLM, which reads them and generates the final answer.
+
+User asks a question.
+Retriever fetches the top k documents.
+Hit@k checks whether at least one of those documents is relevant.
+If you're evaluating the retriever, record:
+1 if there is a relevant document.
+0 otherwise.
+
+Hit Rate is the average of Hit@k across a set of queries, indicating the percentage of queries for which the retriever successfully returned at least one relevant document in the top-k results.
+MRR(Mean reciprocal rank)-finds the position of the first retrieved document.1/rank
+
+precison@k-relevant doc/total retrived doc
+suppose there are 5 docs i.e 1,2,3,4,5 the hit@5 tells that the doc1 is  which is correct doc is under 5 and other docs are irrelevant and those relevant and irrelevant docs will be passed to the LLM but precison will tell how good was the retriever in passing the relevant info to the LLm
+
+Strategies of chunking-
+1.Fixed Sized chunking-this method slices the text into rigid , identical pieces based on the strict count of characters or tokens.It ignore the sentences,paragraph  or its meaning.
+eg-You have a book and it is fixed that i need to tore apart the pages after 5 pages , result is 1 sentence remain on 1 page and other.here we are tearing the pages after every 5 pages.
+
+2.Fixed size chunking with overlap-
+eg-
+
+3.Semantic chunking-
+the topic matcher- grouping the text entirely based on the meaning or the topic.
+eg-Grouping the text entirly based 
+
+4.Recursive chunking-Instead of cutting text blindly, it uses a prioritized list of separators—usually paragraphs (\n\n), then sentences (\n), then words ( ), and finally characters ("")—to split text.
+eg:-suppose there are many clothes and want to fit in the suitcase , what you do you fold them so they can fix in the suitcase
+
+5.Parent/child chunking-sir small chunks are best for searching and large chunking best for the understanding.this type of chunking gives advantage of both we search using the small chunk and let the ai read the large chunk hence giving us a better understanding .10 second video is the 
+
+6.document chunking-grouping the texts entirely based on the visual layout
+
+7.agentic chunking-
+using  ai  aasistant to read the text and deciding where to split.
+
+8.contextual chunking-
+adding the summary at the top of every chunk so it never loses its menaing .
+
+
+How do we choose the best embedding model for the RAG System?
+1.Retrival quality-poor embedding compares the exact words 
+eg-
+
+2.cost
+
+3.Bge
+
+4.Embedding  dimension-
+Means how much information can be stored in each vector . 
+A small FAQ chatbot with 5000 documents  uses less dimension but a legal folder with millions of files needs higher dimension.
+
+
+5.mutlilingual support-BGE-M3(supoorts 100+ language but file size is very large and may eat a lot of ram) and E5
+
+6.domain of data-use a embedding model that is trained for our domain data .
+different embedding model understand differnt domain differently
+
+eg-a patient has myocardial disease question-what is heart disease? a general embediing model dont understand this question but a medical embedding model will understand that both are equal.
+
+7.modalities(text,image,audio)
+
+8.performance needs
+
+9.operational needs locally or api
+
+10.context window-The context window is the maximum amount of text (measured in tokens) that an AI model can read or remember at one time.
+LLM context window 
+embeddings context window
+
+11.Speed-A customer support chatbot serving thousands of users at once benefits from a fast embedding model to keep latency low.
+
+12.Compatibilty with the vector database-The embedding model and vector database must use the same vector dimension. If the dimensions don't match, the vectors cannot be stored or searched correctly.
+if i create a database for 768-dimensional database then every vector i insert must have 768 numbers.
