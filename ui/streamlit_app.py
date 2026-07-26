@@ -152,40 +152,8 @@ with st.sidebar:
     st.caption(f"URL: `{BACKEND_URL}`")
 
     st.divider()
-    st.markdown("### 📂 Upload & Ingest Documents")
-
-    uploaded_files = st.file_uploader(
-        "Upload PDF, TXT, or MD files to the backend",
-        type=["pdf", "txt", "md"],
-        accept_multiple_files=True,
-    )
-
-    if uploaded_files:
-        if st.button("⬆️ Upload to Backend", use_container_width=True):
-            upload_errors = []
-            with st.spinner(f"Uploading {len(uploaded_files)} file(s)…"):
-                for uf in uploaded_files:
-                    try:
-                        res = requests.post(
-                            f"{BACKEND_URL}/upload",
-                            files={"file": (uf.name, uf.getvalue(), uf.type)},
-                            timeout=30,
-                        )
-                        if res.status_code == 200:
-                            st.success(f"✅ {uf.name} uploaded")
-                        else:
-                            upload_errors.append(f"{uf.name}: {res.text}")
-                    except Exception as e:
-                        upload_errors.append(f"{uf.name}: {e}")
-            if upload_errors:
-                for err in upload_errors:
-                    st.error(err)
-            else:
-                st.info("All files uploaded! Now click **Ingest** to index them.")
-
-    st.divider()
-    st.markdown("### 🔄 Ingest Uploaded Documents")
-    st.caption("Run this after uploading to build the vectorstore.")
+    st.markdown("### 📂 Ingest Documents")
+    st.info("Ensure documents are in the backend `data/` folder, then click **Ingest**.")
     if st.button("🔄 Trigger Backend Ingestion", use_container_width=True):
         with st.spinner("Requesting ingestion on backend…"):
             ok, msg = trigger_backend_ingest()
