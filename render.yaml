@@ -1,0 +1,32 @@
+# render.yaml — Render Blueprint for Frontend and Backend deployment
+
+services:
+  # 1. Backend Web Service (FastAPI)
+  - type: web
+    name: backend-web-service-a0to
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn api.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: GOOGLE_API_KEY
+        sync: false # Set in Render Dashboard secrets
+      - key: CHROMA_PERSIST_DIR
+        value: ./vectorstore
+      - key: MODEL_NAME
+        value: gemini-3.5-flash
+      - key: EMBEDDING_MODEL
+        value: all-MiniLM-L6-v2
+      - key: TOP_K
+        value: 3
+      - key: ALLOWED_ORIGINS
+        value: https://frontend-rag-r84t.onrender.com
+
+  # 2. Frontend Web Service (Streamlit)
+  - type: web
+    name: frontend-rag-r84t
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: streamlit run ui/streamlit_app.py --server.port $PORT --server.address 0.0.0.0
+    envVars:
+      - key: BACKEND_URL
+        value: https://backend-web-service-a0to.onrender.com
