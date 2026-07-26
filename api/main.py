@@ -115,6 +115,17 @@ class HealthResponse(BaseModel):
 # Endpoints
 # ---------------------------------------------------------------------------
 
+@app.get("/", tags=["System"])
+def root_check():
+    """Root endpoint returning basic API status and documentation link."""
+    return {
+        "service": "RAG Document Q&A API",
+        "status": "online",
+        "docs_url": "/docs",
+        "health_url": "/health",
+    }
+
+
 @app.get("/health", response_model=HealthResponse, tags=["System"])
 def health_check():
     """Check whether the API and vectorstore are ready."""
