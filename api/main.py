@@ -24,9 +24,10 @@ from pydantic import BaseModel, Field
 sys.path.insert(0, str(Path(__file__).parent.parent))
 load_dotenv()
 
-from app.chain import ask as rag_ask
-from app.ingest import ingest
-from app.retriever import load_vectorstore
+# Heavy ML imports (HuggingFace, ChromaDB, LangChain) are deferred to
+# first use inside each endpoint function. This avoids an OOM crash on
+# Render Free tier (512 MB) where loading all three libraries at startup
+# would spike memory before the process even serves a request.
 
 # ---------------------------------------------------------------------------
 # App setup
@@ -62,8 +63,9 @@ def get_vectorstore():
     global _vectorstore
     if _vectorstore is None:
         try:
+            from app.retriever import load_vectorstore  # lazy import
             _vectorstore = load_vectorstore()
-        except Exception as e:
+        except Exception:
             raise HTTPException(
                 status_code=503,
                 detail=(
@@ -130,6 +132,7 @@ def root_check():
 def health_check():
     """Check whether the API and vectorstore are ready."""
     try:
+        from app.retriever import load_vectorstore  # lazy import
         vs = load_vectorstore()
         ready = vs is not None
     except Exception:
@@ -144,6 +147,7 @@ def ask_question(request: AskRequest):
 
     Returns a natural language answer with source citations.
     """
+    from app.chain import ask as rag_ask  # lazy import
     vs = get_vectorstore()
 
     try:
@@ -181,6 +185,7 @@ def ingest_documents(request: IngestRequest, background_tasks: BackgroundTasks):
 
     def _run_ingest():
         global _vectorstore
+        from app.ingest import ingest  # lazy import
         _vectorstore = None  # force reload after ingestion
         ingest(
             data_dir=request.data_dir,

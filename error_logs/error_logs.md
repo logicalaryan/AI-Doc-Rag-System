@@ -93,6 +93,14 @@
     *   Created `render.yaml` Blueprint for reproducible deployment config.
 *   **Status:** ✅ Fixed
 
+### 12. Render HTTP 502 Bad Gateway (OOM Crash on Startup)
+*   **The Issue:** Frontend showed `Status: HTTP 502` and "Vectorstore not ready" even after backend logs showed "Your service is live".
+*   **Root Cause:** Module-level imports at the top of `api/main.py` (`from app.chain`, `from app.ingest`, `from app.retriever`) forced Python to load PyTorch + HuggingFace + ChromaDB **at Uvicorn startup**, spiking memory above Render Free tier's 512 MB RAM limit. Linux killed the container (`exit code 137`) before serving any request — Render returned HTTP 502.
+*   **Technical Fix:**
+    *   Removed top-level heavy ML imports from `api/main.py`.
+    *   Moved all three imports (`load_vectorstore`, `rag_ask`, `ingest`) **inside** their endpoint functions (lazy loading). They now only load when the first actual HTTP request arrives — not on startup.
+*   **Status:** ✅ Fixed
+
 ---
 
 ## FINAL PASS / FAIL SUMMARY
