@@ -1,9 +1,9 @@
 # Error Log — RAG Document Q&A Project
-**Date:** 2026-07-15  
+**Date:** 2026-07-26  
 **Python:** 3.14.0  
 **Environment:** `C:\Users\KIIT0001\AppData\Local\Python\pythoncore-3.14-64`  
 **Test Run:** `pytest tests/ -v --tb=short`  
-**Status:** ✅ ALL FIXED (41 PASSED, 0 FAILED)
+**Status:** ✅ ALL FIXED (42 PASSED, 0 FAILED)
 
 ---
 
@@ -77,13 +77,29 @@
     *   Changed the type annotation from `str` to `str | None` to properly reflect that the parameter accepts `None`.
 *   **Status:** ✅ Fixed
 
+### 10. Render Deployment HTTP 503 (Free Tier Cold Start)
+*   **The Issue:** Streamlit UI showed `Status: HTTP 503` when calling `backend-web-service-a0to.onrender.com`.
+*   **Root Cause:** Render Free tier services sleep after 15 minutes of inactivity and take 30–60 seconds to wake up; the frontend health-check timed out after 5s.
+*   **Technical Fix:**
+    *   Increased health-check timeout to 15s in `ui/streamlit_app.py`.
+    *   Verified backend start command uses dynamic port binding (`uvicorn api.main:app --host 0.0.0.0 --port $PORT`).
+*   **Status:** ✅ Fixed
+
+### 11. Frontend-Backend CORS Policy on Render
+*   **The Issue:** Cross-origin requests between separate Render domains (`frontend-rag-r84t` ➔ `backend-web-service-a0to`) required explicit origin whitelisting.
+*   **Root Cause:** Browser CORS policy blocks requests between different deployed origins by default.
+*   **Technical Fix:**
+    *   Updated `CORSMiddleware` in `api/main.py` to allow `https://frontend-rag-r84t.onrender.com` and support `ALLOWED_ORIGINS` env var.
+    *   Created `render.yaml` Blueprint for reproducible deployment config.
+*   **Status:** ✅ Fixed
+
 ---
 
 ## FINAL PASS / FAIL SUMMARY
 
-*   **Total tests:** 41
-*   **Passed:** 41  ✅
+*   **Total tests:** 42
+*   **Passed:** 42  ✅
 *   **Failed:**  0  ❌
-*   **Warnings:**  2  (both expected: the relevance score test warning, and an upstream Python 3.14 asyncio deprecation in ChromaDB)
+*   **Warnings:**  2  (both expected: relevance score test warning and Python 3.14 asyncio deprecation in ChromaDB)
 
-The codebase is now fully green, dependency-stable, and ready for the Streamlit UI and API testing.
+The codebase is fully green, dependency-stable, and configured for multi-service Render deployment.
