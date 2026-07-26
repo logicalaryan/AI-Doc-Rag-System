@@ -5,6 +5,7 @@ Endpoints:
   GET  /health       → Health check
   POST /ask          → Ask a question, get an answer + sources
   POST /ingest       → Trigger document ingestion
+  POST /upload       → Upload a document (PDF, TXT, MD) to the backend data/ folder
 
 Run with:
     uvicorn api.main:app --reload
@@ -17,7 +18,7 @@ from pathlib import Path
 from typing import List, Optional
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, BackgroundTasks
+from fastapi import FastAPI, HTTPException, BackgroundTasks, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
@@ -82,7 +83,12 @@ def get_vectorstore():
 # ---------------------------------------------------------------------------
 
 class AskRequest(BaseModel):
-    question: str = Field(..., min_length=1, max_length=1000, example="What is the annual revenue?")
+    question: str = Field(
+        ...,
+        min_length=1,
+        max_length=1000,
+        json_schema_extra={"example": "What is the annual revenue?"},
+    )
     k: int = Field(default=3, ge=1, le=10, description="Number of chunks to retrieve")
 
 
@@ -98,7 +104,7 @@ class AskResponse(BaseModel):
 
 
 class IngestRequest(BaseModel):
-    data_dir: str = Field(default="./data", example="./data")
+    data_dir: str = Field(default="./data", json_schema_extra={"example": "./data"})
     chunk_size: int = Field(default=1000, ge=100, le=5000)
     chunk_overlap: int = Field(default=200, ge=0, le=1000)
 
@@ -201,3 +207,46 @@ def ingest_documents(request: IngestRequest, background_tasks: BackgroundTasks):
             "The vectorstore will be ready in a few seconds."
         ),
     )
+
+
+# ---------------------------------------------------------------------------
+# File Upload endpoint
+# ---------------------------------------------------------------------------
+
+ALLOWED_EXTENSIONS = {".pdf", ".txt", ".md"}
+DATA_DIR = Path(os.getenv("DATA_DIR", "./data"))
+
+
+@app.post("/upload", tags=["Administration"])
+async def upload_document(file: UploadFile = File(...)):
+    """
+    Upload a document (PDF, TXT, or MD) to the backend data/ folder.
+
+    After uploading, call POST /ingest to embed and index the document.
+    Note: on Render Free tier, uploaded files are lost after a redeploy.
+    """
+    # Validate file extension
+    suffix = Path(file.filename).suffix.lower()
+    if suffix not in ALLOWED_EXTENSIONS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported file type '{suffix}'. Allowed: {', '.join(ALLOWED_EXTENSIONS)}",
+        )
+
+    # Ensure data/ directory exists
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+
+    # Save file to data/
+    save_path = DATA_DIR / file.filename
+    try:
+        contents = await file.read()
+        save_path.write_bytes(contents)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to save file: {e}")
+
+    return {
+        "status": "uploaded",
+        "filename": file.filename,
+        "size_bytes": len(contents),
+        "message": f"File saved to {save_path}. Now call POST /ingest to index it.",
+    }

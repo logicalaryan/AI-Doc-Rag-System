@@ -463,3 +463,156 @@ Build in this order to always have something working:
 9. **`tests/`** — Lock down behavior
 10. **`notebooks/exploration.ipynb`** — Document your experiments
 11. **`README.md`** + **`DECISIONS.md`** — Polish for portfolio
+12. **Deploy backend** (`api/main.py`) to Render as a Web Service
+13. **Deploy frontend** (`ui/streamlit_app.py`) to Render as a separate Web Service
+14. **Set environment variables** in Render Dashboard for both services
+
+---
+
+## Deployment (Render)
+
+The project runs as **two separate services** on Render — one for the backend API and one for the frontend UI. They talk to each other over HTTP.
+
+### Architecture
+
+```
+Browser
+  │
+  ▼
+Render: frontend-rag-r84t         (Streamlit — ui/streamlit_app.py)
+  │  sends HTTP requests
+  ▼
+Render: backend-web-service-a0to  (FastAPI  — api/main.py)
+  │  loads embeddings + queries LLM
+  ▼
+ChromaDB (vectorstore/) + Google Gemini API
+```
+
+---
+
+### Why Two Separate Services?
+
+- **Frontend** only handles the UI. It doesn't need ML libraries at startup.
+- **Backend** handles all the heavy work: loading embeddings, running ChromaDB, calling Gemini.
+- Splitting them means each service stays small and fast to boot.
+
+---
+
+### `render.yaml` — Deployment Blueprint
+
+Defines both services in one file so Render knows exactly how to build and start each one.
+
+```yaml
+# Backend
+startCommand: uvicorn api.main:app --host 0.0.0.0 --port $PORT
+
+# Frontend
+startCommand: streamlit run ui/streamlit_app.py --server.port $PORT --server.address 0.0.0.0
+```
+
+**Why `--host 0.0.0.0 --port $PORT` is required:**
+Render assigns a random port via the `$PORT` environment variable. Without binding to `0.0.0.0`, Render's load balancer can't reach your app and returns HTTP 502.
+
+---
+
+### Environment Variables on Render
+
+#### Backend Service (`backend-web-service-a0to`)
+
+| Variable | Value | Why |
+|---|---|---|
+| `GOOGLE_API_KEY` | your key | Authenticates Gemini LLM calls |
+| `MODEL_NAME` | `gemini-2.0-flash` | Which Gemini model to use |
+| `EMBEDDING_MODEL` | `all-MiniLM-L6-v2` | HuggingFace embedding model |
+| `CHROMA_PERSIST_DIR` | `./vectorstore` | Where ChromaDB stores files |
+| `TOP_K` | `3` | Chunks returned per query |
+| `ALLOWED_ORIGINS` | `https://frontend-rag-r84t.onrender.com` | CORS — allows frontend to call backend |
+| `HF_HUB_DISABLE_SYMLINKS_WARNING` | `1` | Suppresses a harmless cache warning |
+
+#### Frontend Service (`frontend-rag-r84t`)
+
+| Variable | Value | Why |
+|---|---|---|
+| `BACKEND_URL` | `https://backend-web-service-a0to.onrender.com` | Where the frontend sends its HTTP requests |
+
+---
+
+### How the Frontend Calls the Backend
+
+The Streamlit app uses Python's `requests` library to talk to the FastAPI backend over HTTP. There are no direct Python imports between services.
+
+| Action | Frontend does | Backend endpoint |
+|---|---|---|
+| Check if backend is alive | `GET /health` | Returns `{"status":"ok","vectorstore_ready":true/false}` |
+| Ask a question | `POST /ask` with `{question, k}` | Returns `{answer, sources}` |
+| Trigger ingestion | `POST /ingest` | Starts ingestion in the background |
+
+```python
+# Example from ui/streamlit_app.py
+BACKEND_URL = os.getenv("BACKEND_URL", "https://backend-web-service-a0to.onrender.com")
+
+res = requests.post(f"{BACKEND_URL}/ask", json={"question": "...", "k": 3}, timeout=60)
+data = res.json()  # → {"answer": "...", "sources": [...]}
+```
+
+---
+
+### CORS — Why It's Needed
+
+Browsers block cross-origin requests by default. Since the frontend (`frontend-rag-r84t.onrender.com`) is on a different domain than the backend (`backend-web-service-a0to.onrender.com`), the backend must explicitly say "I allow requests from that frontend URL."
+
+This is done in `api/main.py` with `CORSMiddleware`:
+
+```python
+ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "*")
+app.add_middleware(CORSMiddleware, allow_origins=[ALLOWED_ORIGINS], ...)
+```
+
+Set `ALLOWED_ORIGINS=https://frontend-rag-r84t.onrender.com` in the backend's Render environment.
+
+---
+
+### Lazy Imports — Why They Matter on Render Free Tier
+
+Render Free tier gives each service **512 MB of RAM**.
+
+**The problem (before the fix):**
+```python
+# api/main.py — top of file
+from app.chain import ask       # loads PyTorch
+from app.ingest import ingest   # loads HuggingFace
+from app.retriever import load_vectorstore  # loads ChromaDB
+```
+All three libraries load at Uvicorn startup, spiking RAM well past 512 MB. Linux kills the container. Render returns **HTTP 502 Bad Gateway**.
+
+**The fix (lazy imports):**
+```python
+# api/main.py — inside each endpoint function
+def ask_question(request):
+    from app.chain import ask   # only loads when first request arrives
+    ...
+```
+Now the backend starts with almost no RAM usage. Libraries only load when the first actual request comes in.
+
+---
+
+### Common Render Errors and What They Mean
+
+| HTTP Error | Cause | Fix |
+|---|---|---|
+| **502 Bad Gateway** | Container crashed on startup (OOM) | Use lazy imports; check Render Logs for `exit code 137` |
+| **503 Service Unavailable** | Free tier container is asleep (cold start) | Wait 30–60 seconds; the container wakes up automatically |
+| **404 Not Found** | No endpoint at the URL you visited | Add a root `GET /` endpoint so Render's health ping gets HTTP 200 |
+| **CORS Error** | Frontend domain not whitelisted | Set `ALLOWED_ORIGINS` in backend environment on Render |
+
+---
+
+### Suggested Deploy Order
+
+1. Push all code to **`main`** branch on GitHub (Render watches `main`)
+2. Create **backend** Web Service on Render → set all env vars → deploy
+3. Wait for backend to go live → visit `https://your-backend.onrender.com/health`
+4. Create **frontend** Web Service on Render → set `BACKEND_URL` → deploy
+5. Visit the frontend URL → sidebar should show **🟢 Online**
+6. Click **Trigger Backend Ingestion** → then ask a question
+
