@@ -41,9 +41,14 @@ app = FastAPI(
     version="1.0.0",
 )
 
+allowed_origins_raw = os.getenv("ALLOWED_ORIGINS", "*")
+allowed_origins = [o.strip() for o in allowed_origins_raw.split(",") if o.strip()]
+if "*" not in allowed_origins and "https://frontend-rag-r84t.onrender.com" not in allowed_origins:
+    allowed_origins.append("https://frontend-rag-r84t.onrender.com")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
