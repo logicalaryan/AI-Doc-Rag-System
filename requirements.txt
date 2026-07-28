@@ -2,8 +2,10 @@ langchain==0.3.25
 langchain-google-genai==2.1.5
 langchain-community==0.3.24
 langchain-chroma==0.2.4
+langchain-qdrant>=0.2.0
 langchain-huggingface>=0.1.0  # provides HuggingFaceEmbeddings (modern location)
 chromadb>=1.0.9
+qdrant-client>=1.9.0
 sentence-transformers==3.4.1
 fastapi==0.115.12
 uvicorn==0.34.0
