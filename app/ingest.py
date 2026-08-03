@@ -22,9 +22,6 @@ from langchain_community.document_loaders import (
     TextLoader,
 )
 from langchain_chroma import Chroma
-from langchain_qdrant import QdrantVectorStore
-from qdrant_client import QdrantClient
-from qdrant_client.http.models import Distance, VectorParams
 from langchain_core.documents import Document
 
 # HuggingFaceEmbeddings moved to langchain_huggingface in newer versions.
@@ -40,9 +37,6 @@ load_dotenv()
 # Config (reads from .env, falls back to sensible defaults)
 # ---------------------------------------------------------------------------
 CHROMA_PERSIST_DIR = os.getenv("CHROMA_PERSIST_DIR", "./vectorstore")
-VECTOR_DB_TYPE = os.getenv("VECTOR_DB_TYPE", "chroma").lower()
-QDRANT_URL = os.getenv("QDRANT_URL", "./qdrant_db")
-QDRANT_API_KEY = os.getenv("QDRANT_API_KEY", "")
 CHUNK_SIZE = int(os.getenv("CHUNK_SIZE", "1000"))
 CHUNK_OVERLAP = int(os.getenv("CHUNK_OVERLAP", "200"))
 EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "all-MiniLM-L6-v2")
@@ -127,77 +121,29 @@ def get_embedding_model(model_name: str = EMBEDDING_MODEL) -> HuggingFaceEmbeddi
     )
 
 
-def get_qdrant_client(url: str = QDRANT_URL, api_key: str = QDRANT_API_KEY) -> QdrantClient:
-    """Return an initialized QdrantClient (Cloud URL or local disk path)."""
-    if url.startswith("http://") or url.startswith("https://"):
-        return QdrantClient(url=url, api_key=api_key if api_key else None)
-    else:
-        return QdrantClient(path=url)
-
-
-def build_qdrant_vectorstore(
-    chunks: List[Document],
-    url: str = QDRANT_URL,
-    api_key: str = QDRANT_API_KEY,
-    embedding_model=None,
-) -> QdrantVectorStore:
-    """
-    Ingest document chunks into Qdrant (Cloud or local path).
-    """
-    if embedding_model is None:
-        embedding_model = get_embedding_model()
-
-    client = get_qdrant_client(url, api_key)
-
-    if not client.collection_exists(COLLECTION_NAME):
-        client.create_collection(
-            collection_name=COLLECTION_NAME,
-            vectors_config=VectorParams(size=384, distance=Distance.COSINE),
-        )
-
-    qdrant_store = QdrantVectorStore(
-        client=client,
-        collection_name=COLLECTION_NAME,
-        embedding=embedding_model,
-    )
-
-    qdrant_store.add_documents(chunks)
-    print(f"[ingest] Ingested {len(chunks)} chunk(s) into Qdrant at '{url}'")
-    return qdrant_store
-
-
 def build_vectorstore(
     chunks: List[Document],
     persist_dir: str = CHROMA_PERSIST_DIR,
     embedding_model=None,
-    db_type: str = VECTOR_DB_TYPE,
 ):
     """
-    Embed *chunks* and persist them to ChromaDB or Qdrant based on *db_type*.
+    Embed *chunks* and persist them to ChromaDB.
 
     If a store already exists at *persist_dir*, the new chunks are ADDED
     (not replaced). To start fresh, delete the vectorstore/ directory.
     """
-    if db_type == "qdrant":
-        return build_qdrant_vectorstore(
-            chunks=chunks,
-            url=QDRANT_URL,
-            api_key=QDRANT_API_KEY,
-            embedding_model=embedding_model,
-        )
-    else:
-        if embedding_model is None:
-            embedding_model = get_embedding_model()
+    if embedding_model is None:
+        embedding_model = get_embedding_model()
 
-        vectorstore = Chroma.from_documents(
-            documents=chunks,
-            embedding=embedding_model,
-            persist_directory=persist_dir,
-            collection_name=COLLECTION_NAME,
-        )
-        print(f"[ingest] Vectorstore persisted to '{persist_dir}' "
-              f"({len(chunks)} chunk(s))")
-        return vectorstore
+    vectorstore = Chroma.from_documents(
+        documents=chunks,
+        embedding=embedding_model,
+        persist_directory=persist_dir,
+        collection_name=COLLECTION_NAME,
+    )
+    print(f"[ingest] Vectorstore persisted to '{persist_dir}' "
+          f"({len(chunks)} chunk(s))")
+    return vectorstore
 
 
 def ingest(
@@ -206,7 +152,6 @@ def ingest(
     chunk_overlap: int = CHUNK_OVERLAP,
     persist_dir: str = CHROMA_PERSIST_DIR,
     strategy: str = "recursive",
-    db_type: str = VECTOR_DB_TYPE,
 ):
     """
     Full ingestion pipeline: load → chunk → embed → persist.
@@ -219,5 +164,5 @@ def ingest(
         return None
 
     chunks = chunk_documents(documents, chunk_size, chunk_overlap, strategy=strategy)
-    vectorstore = build_vectorstore(chunks, persist_dir, db_type=db_type)
+    vectorstore = build_vectorstore(chunks, persist_dir)
     return vectorstore

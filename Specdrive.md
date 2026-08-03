@@ -8,7 +8,7 @@
 | Framework | LangChain | Free | Abstracts RAG plumbing (loaders, splitters, chains) |
 | LLM | Google Gemini (`gemini-2.0-flash`) | Free tier — 15 RPM, 1M TPM | Fast, high quality, generous free quota |
 | Embeddings | HuggingFace `all-MiniLM-L6-v2` | Free — runs locally | No API key needed, runs on CPU, 384-dim vectors |
-| Vector Store | ChromaDB / Qdrant Cloud | Free | Zero-config local or cloud persistence (Qdrant Cloud Free Tier 1M vectors) |
+| Vector Store | ChromaDB | Free | Zero-config, file-based — no server to manage |
 | API | FastAPI | Free | Async, auto-docs at `/docs`, beginner-friendly |
 | Frontend | Streamlit | Free | One-file UI, zero JS required |
 
@@ -380,9 +380,6 @@ python scripts/ingest_docs.py --data-dir ./data --chunk-size 1000
 #### `.env.example`
 ```
 GOOGLE_API_KEY=your-gemini-api-key-here
-VECTOR_DB_TYPE=qdrant
-QDRANT_URL=https://your-cluster-id.eu-west-2-0.aws.cloud.qdrant.io
-QDRANT_API_KEY=your-qdrant-api-key-here
 CHROMA_PERSIST_DIR=./vectorstore
 CHUNK_SIZE=1000
 CHUNK_OVERLAP=200
@@ -525,9 +522,6 @@ Render assigns a random port via the `$PORT` environment variable. Without bindi
 | Variable | Value | Why |
 |---|---|---|
 | `GOOGLE_API_KEY` | your key | Authenticates Gemini LLM calls |
-| `VECTOR_DB_TYPE` | `qdrant` | Chooses between `chroma` and `qdrant` engines |
-| `QDRANT_URL` | `https://your-cluster-id.eu-west-2-0.aws.cloud.qdrant.io` | Qdrant Cloud cluster endpoint |
-| `QDRANT_API_KEY` | `your-qdrant-api-key-here` | Authenticates Qdrant Cloud API calls |
 | `MODEL_NAME` | `gemini-2.0-flash` | Which Gemini model to use |
 | `EMBEDDING_MODEL` | `all-MiniLM-L6-v2` | HuggingFace embedding model |
 | `CHROMA_PERSIST_DIR` | `./vectorstore` | Where ChromaDB stores files |
@@ -629,17 +623,8 @@ Now the backend starts with almost no RAM usage. Libraries only load when the fi
 ### Vector Database Documentation Added (`vector_Database.md`)
 Created and updated `vector_Database.md` in simple English detailing:
 - What a Vector Database is and why ChromaDB was selected as the default local store.
-- **Qdrant Integration & Comparison**: Added Qdrant features, comparison matrix (ChromaDB vs Qdrant), Rust performance, and payload filtering.
-- Code snippets for ingesting and retrieving documents using `langchain-qdrant`.
 - Document ingestion flow (loading, chunking, embedding generation).
 - Vector retrieval and similarity search pipeline.
-- Database reset and maintenance instructions for both ChromaDB and Qdrant.
-
-### Qdrant Cloud Integration & Configuration
-Fully integrated Qdrant Cloud support across `app/ingest.py`, `app/retriever.py`, and project configuration files:
-- **Qdrant Cloud Cluster ID**: `<your-qdrant-cluster-id>`
-- **Qdrant Cloud URL / Endpoint**: `https://<your-qdrant-cluster-id>.eu-west-2-0.aws.cloud.qdrant.io`
-- **Qdrant API Key**: `<your-qdrant-api-key>`
-- **Engine Switching**: Added `VECTOR_DB_TYPE=qdrant` (defaulting to `chroma` if unset) so local and cloud environments can dynamically select between local disk ChromaDB or managed Qdrant Cloud.
+- Database reset and maintenance instructions for ChromaDB.
 
 
