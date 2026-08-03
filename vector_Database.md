@@ -1,6 +1,6 @@
-# Vector Database (ChromaDB & Qdrant) — Documentation & Architecture
+# Vector Database (ChromaDB) — Documentation & Architecture
 
-This document provides a comprehensive overview of the Vector Database architecture, configuration, ingestion, and search workflow used in the **RAG Document Q&A System**, including comparison and integration guide for **Qdrant**.
+This document provides a comprehensive overview of the Vector Database architecture, configuration, ingestion, and search workflow used in the **RAG Document Q&A System**.
 
 ---
 
@@ -17,7 +17,7 @@ In a RAG (Retrieval-Augmented Generation) system, the vector database serves as 
 
 ## 2. Primary Engine: ChromaDB
 
-This project currently uses **ChromaDB** as the default local vector database.
+This project uses **ChromaDB** as the vector database.
 
 ### Key Reasons for Choosing ChromaDB:
 - **Zero-Config & Embedded:** Runs in-process alongside Python; no separate server installation or container management required.
@@ -27,155 +27,43 @@ This project currently uses **ChromaDB** as the default local vector database.
 
 ---
 
-## 3. Alternative & Production Engine: Qdrant
-
-**Qdrant** is an enterprise-grade, high-performance vector search engine written in **Rust**. It provides open-source, local, and managed cloud options.
-
-### Key Features of Qdrant:
-- **Written in Rust:** High performance, memory-efficient vector operations with HNSW indexing.
-- **Advanced Payload Filtering:** Supports complex JSON payload filtering alongside vector similarity search without performance degradation.
-- **Flexible Deployment Modes:**
-  - **In-Memory / Local Disk:** Run directly in Python process via `qdrant-client` (no server needed).
-  - **Docker Container:** Run locally via `docker run -p 6333:6333 qdrant/qdrant`.
-  - **Qdrant Cloud:** Managed cloud cluster with free tier support.
-- **Quantization:** Supports Scalar and Product Quantization for up to 4x RAM footprint reduction.
-
----
-
-## 4. Comparison: ChromaDB vs. Qdrant
-
-| Feature / Metric | ChromaDB | Qdrant |
-|---|---|---|
-| **Core Language** | Python / C++ | Rust |
-| **In-Memory / Local Disk** | Yes (`./vectorstore`) | Yes (`:memory:` or `./qdrant_db`) |
-| **Docker / Server Mode** | Yes | Yes (gRPC + HTTP APIs) |
-| **Managed Cloud Option** | Chroma Cloud (beta) | Qdrant Cloud (Production-ready) |
-| **Filtering Capability** | Basic metadata filtering | Advanced nested payload filtering |
-| **Performance & Scale** | Great for small-to-medium datasets | Ultra-high performance, multi-million vector datasets |
-| **Quantization Support** | Limited | Scalar & Product Quantization |
-| **Primary Use Case** | Local prototypes & lightweight apps | Production, multi-tenant RAG applications |
-
----
-
-## 5. Integrating Qdrant into this RAG Pipeline
-
-To use **Qdrant** instead of ChromaDB in this project, follow these steps:
-
-### Step 5.1: Install Dependencies
-```bash
-pip install qdrant-client langchain-qdrant
-```
-
-### Step 5.2: Ingestion Code (`app/ingest.py` with Qdrant)
-
-```python
-from langchain_qdrant import QdrantVectorStore
-from qdrant_client import QdrantClient
-from qdrant_client.http.models import Distance, VectorParams
-
-def build_qdrant_vectorstore(chunks, embedding_model, location="./qdrant_db"):
-    """
-    Ingest document chunks into Qdrant local disk storage.
-    """
-    # Initialize Qdrant Client (Local storage mode)
-    client = QdrantClient(path=location)
-
-    collection_name = "rag_documents"
-
-    # Create collection if it doesn't exist
-    if not client.collection_exists(collection_name):
-        client.create_collection(
-            collection_name=collection_name,
-            vectors_config=VectorParams(size=384, distance=Distance.COSINE),
-        )
-
-    # Wrap in LangChain QdrantVectorStore
-    qdrant_store = QdrantVectorStore(
-        client=client,
-        collection_name=collection_name,
-        embedding=embedding_model,
-    )
-
-    # Add documents
-    qdrant_store.add_documents(chunks)
-    print(f"[ingest] Ingested {len(chunks)} chunks into Qdrant at '{location}'")
-    return qdrant_store
-```
-
-### Step 5.3: Retrieval Code (`app/retriever.py` with Qdrant)
-
-```python
-from langchain_qdrant import QdrantVectorStore
-from qdrant_client import QdrantClient
-
-def retrieve_qdrant(question, k=3, location="./qdrant_db", embedding_model=None):
-    """
-    Query Qdrant vector database with similarity search.
-    """
-    client = QdrantClient(path=location)
-    
-    qdrant_store = QdrantVectorStore(
-        client=client,
-        collection_name="rag_documents",
-        embedding=embedding_model,
-    )
-
-    # Perform similarity search
-    results = qdrant_store.similarity_search(question, k=k)
-    return results
-```
-
----
-
-## 6. Data Schema & Metadata Tracking
+## 3. Data Schema & Metadata Tracking
 
 - **Collection Name:** `rag_documents`
-- **Default Storage Location:** 
-  - ChromaDB: `./vectorstore`
-  - Qdrant: `./qdrant_db` or Qdrant Cloud URL
+- **Default Storage Location:** `./vectorstore`
 - **Embedding Model:** `all-MiniLM-L6-v2` (HuggingFace, 384 dimensions)
-- **Metadata/Payload Fields Tracked:**
+- **Metadata Fields Tracked:**
   - `source`: File path of origin document (e.g., `data/sample.pdf`)
   - `page`: Page number (for PDF documents)
 
 ---
 
-## 7. Ingestion & Retrieval Flow Overview
+## 4. Ingestion & Retrieval Flow Overview
 
 ```
 [Raw Documents] -> [Text Splitter (1000 chars, 200 overlap)] 
                 -> [HuggingFace Embeddings (384-dim)] 
-                -> [Vector DB (ChromaDB / Qdrant)] 
+                -> [ChromaDB (./vectorstore)] 
                 -> [Similarity Search (Top-k=3)] -> [LLM Context Prompt]
 ```
 
 ---
 
-## 8. Configuration Parameters (`.env`)
+## 5. Configuration Parameters (`.env`)
 
 | Parameter | Environment Variable | Default Value | Description |
 |---|---|---|---|
-| Vector Store Type | `VECTOR_DB_TYPE` | `chroma` | `chroma` or `qdrant` |
 | Persist Directory | `CHROMA_PERSIST_DIR` | `./vectorstore` | Path for ChromaDB disk storage |
-| Qdrant Directory / Host | `QDRANT_LOCATION` | `./qdrant_db` | Local path or Cloud URL for Qdrant |
-| Qdrant API Key | `QDRANT_API_KEY` | `` | Optional API Key for Qdrant Cloud |
 | Embedding Model | `EMBEDDING_MODEL` | `all-MiniLM-L6-v2` | HuggingFace embedding model |
 | Top-K Results | `TOP_K` | `3` | Number of chunks returned per query |
 
 ---
 
-## 9. Vector Database Management & Maintenance
+## 6. Vector Database Management & Maintenance
 
 ### Resetting / Clearing ChromaDB
 ```bash
 # PowerShell
 Remove-Item -Recurse -Force vectorstore
-python scripts/ingest_docs.py
-```
-
-### Resetting / Clearing Qdrant (Local Path)
-```bash
-# PowerShell
-Remove-Item -Recurse -Force qdrant_db
 python scripts/ingest_docs.py
 ```
